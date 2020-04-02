@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 const fetch = require('node-fetch');
-const port = 3000
+const port = process.env.PORT || 4000
 var covid ;
 
 // fetch("https://covid19.th-stat.com/api/open/timeline")
@@ -24,4 +24,4 @@ var covid ;
 app.post('/webhook', (req, res) => res.sendStatus(200))
 
 
-app.listen(port, () => console.log(`App listening at http://localhost:${port}`))
+app.listen(port)
