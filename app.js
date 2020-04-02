@@ -15,7 +15,7 @@ var covid ;
 // app.get('/',function(req,res){
 //     res.send(covid);
 // })
-
+ 
 // app.get('/today', function(req,res){
 //     var today = covid.Data.slice(-1)[0];
 //     res.send(today);
