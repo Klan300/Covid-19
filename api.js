@@ -21,5 +21,7 @@ app.get('/today', function(req,res){
     res.send(today);
 })
 
+app.post('/webhook', (req, res) => res.sendStatus(200))
+
 
 app.listen(port, () => console.log(`App listening at http://localhost:${port}`))
