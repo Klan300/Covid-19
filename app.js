@@ -6,7 +6,7 @@ const fetch = require("node-fetch");
 const port = process.env.PORT || 4000;
 var CronJob = require('cron').CronJob;
 
-var job = new CronJob('* * * * *', function() {
+var job = new CronJob('0 13 * * *', function() {
   fetch("https://covid19.th-stat.com/api/open/timeline")
     .then(response => {
       return response.json();
