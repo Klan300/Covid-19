@@ -79,7 +79,7 @@ async function reply_covid_today(reply_token, today) {
                 action: {
                   type: "uri",
                   label: "action",
-                  uri: "http://linecorp.com/"
+                  uri: "https://patdpat.github.io/covid"
                 },
                 margin: "lg"
               }
@@ -216,7 +216,7 @@ async function reply_covid_today(reply_token, today) {
             margin: "sm",
             borderWidth: "1px",
             borderColor: "#FFFFFF"
-          }
+          },
         }
       }
     ]
