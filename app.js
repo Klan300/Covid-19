@@ -6,7 +6,7 @@ const fetch = require("node-fetch");
 const port = process.env.PORT || 4000;
 var CronJob = require('cron').CronJob;
 
-var job = new CronJob('0 13 * * *', function() {
+var job = new CronJob('0 15 * * *', function() {
   fetch("https://covid19.th-stat.com/api/open/timeline")
     .then(response => {
       return response.json();
@@ -56,7 +56,7 @@ async function push_covid_today(user_Id, today) {
     messages: [
       {
         type: "flex",
-        altText: "This is a Flex Message",
+        altText: "ยอดล่าสุด",
         contents: {
           type: "bubble",
           header: {
@@ -267,7 +267,7 @@ async function reply_covid_today(reply_token, today) {
     messages: [
       {
         type: "flex",
-        altText: "This is a Flex Message",
+        altText: "ยอดล่าสุด",
         contents: {
           type: "bubble",
           header: {
