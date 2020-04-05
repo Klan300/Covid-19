@@ -50,7 +50,6 @@ app.post("/webhook", async (req, res) => {
   if (id.length == 0) {
       create_userId(user_Id);
   }
-  console.log(id);
   fetch("https://covid19.th-stat.com/api/open/timeline")
     .then((response) => {
       return response.json();
@@ -63,7 +62,7 @@ app.post("/webhook", async (req, res) => {
         reply_covid_today(reply_token, today);
       }
     });
-  res.sendStatus(200).end();
+  res.sendStatus(200);
 });
 
 app.listen(port);
