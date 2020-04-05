@@ -24,7 +24,7 @@ mongoose.connection.on("error", (err) => {
 });
 
 var job = new CronJob(
-  "* 12 * * *",
+  "* 23 * * *",
   async function () {
     await fetch("https://covid19.th-stat.com/api/open/timeline")
       .then((response) => {
