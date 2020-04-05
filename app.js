@@ -1,46 +1,74 @@
 const express = require("express");
 const request = require("request");
 const app = express();
+require('dotenv').config()
 const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
 const port = process.env.PORT || 4000;
-var CronJob = require('cron').CronJob;
-
-var job = new CronJob('1 13 * * *', function() {
-  fetch("https://covid19.th-stat.com/api/open/timeline")
-    .then(response => {
-      return response.json();
-    })
-    .then(data => {
-      let today = data.Data.slice(-1)[0];
-      let user_Id = "Ud48a57e58577b38732ba37f4c01d7f71";
-      push_covid_today(user_Id, today);
-    });
-}, null, true, 'Asia/Bangkok');
-job.start();
-
+const mongoose = require("mongoose");
+var CronJob = require("cron").CronJob;
+const User = require("./models/user");
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(express.json());
 
-app.post("/webhook", (req, res) => {
+
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/line-covid19', {
+  useUnifiedTopology: true,
+  useNewUrlParser: true,
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB error", err);
+});
+
+var job = new CronJob(
+  "* 12 * * *",
+  async function () {
+    await fetch("https://covid19.th-stat.com/api/open/timeline")
+      .then((response) => {
+        return  response.json();
+      })
+      .then( async (data) => {
+        let today = data.Data.slice(-1)[0];
+        console.log(today);
+        await broadcast_covid_today(today);
+
+      });
+  },
+  null,
+  true,
+  "Asia/Bangkok"
+);
+job.start();
+
+app.post("/webhook", async (req, res) => {
+  let reply_token = req.body.events[0].replyToken;
+  const user_Id = req.body.events[0].source.userId;
+  const id = await User.where('userId').equals(user_Id).find({}); 
+  if (id.length == 0) {
+      create_userId(user_Id);
+  }
+  console.log(id);
   fetch("https://covid19.th-stat.com/api/open/timeline")
-    .then(response => {
+    .then((response) => {
       return response.json();
     })
-    .then(data => {
+    .then((data) => {
       let today = data.Data.slice(-1)[0];
-      let reply_token = req.body.events[0].replyToken;
       console.log(req.body.events[0]);
       let msg = req.body.events[0].message.text;
-      if (msg == "ยอดล่าสุด") reply_covid_today(reply_token, today);
+      if (msg == "ยอดล่าสุด") {
+        reply_covid_today(reply_token, today);
+      }
     });
-  res.sendStatus(200);
+  res.sendStatus(200).end();
 });
 
 app.listen(port);
 
-async function push_covid_today(user_Id, today) {
+async function broadcast_covid_today(today) {
   let confirm = today.Confirmed;
   let newconfirm = today.NewConfirmed;
   let recover = today.Recovered;
@@ -49,10 +77,9 @@ async function push_covid_today(user_Id, today) {
   let headers = {
     "Content-Type": "application/json",
     Authorization:
-      "Bearer {gnF3K0zD9X1ISUjxWDpWOip8smCuDTC5y8bDI3keJk/ks+eGOKiyJLVHKF53wtPBGoCv6qdFWAAW+z83JyvQu8rtd+ILkPg8oCmLq4cHUauZGbA0I9iSjaplLMwQJxUSb2Dullhv4uagNFK8HelmPQdB04t89/1O/w1cDnyilFU=}"
+      "Bearer {gnF3K0zD9X1ISUjxWDpWOip8smCuDTC5y8bDI3keJk/ks+eGOKiyJLVHKF53wtPBGoCv6qdFWAAW+z83JyvQu8rtd+ILkPg8oCmLq4cHUauZGbA0I9iSjaplLMwQJxUSb2Dullhv4uagNFK8HelmPQdB04t89/1O/w1cDnyilFU=}",
   };
   let body = JSON.stringify({
-    to : user_Id,
     messages: [
       {
         type: "flex",
@@ -74,9 +101,9 @@ async function push_covid_today(user_Id, today) {
                     text: "ติดเชื้อสะสม",
                     color: "#33312b",
                     size: "md",
-                    weight: "bold"
-                  }
-                ]
+                    weight: "bold",
+                  },
+                ],
               },
               {
                 type: "box",
@@ -89,18 +116,18 @@ async function push_covid_today(user_Id, today) {
                     size: "xl",
                     align: "center",
                     gravity: "center",
-                    weight: "regular"
-                  }
+                    weight: "regular",
+                  },
                 ],
                 action: {
                   type: "uri",
                   label: "action",
-                  uri: "https://patdpat.github.io/covid"
+                  uri: "https://patdpat.github.io/covid",
                 },
-                margin: "lg"
-              }
+                margin: "lg",
+              },
             ],
-            backgroundColor: "#ffd800"
+            backgroundColor: "#ffd800",
           },
           hero: {
             type: "box",
@@ -112,15 +139,15 @@ async function push_covid_today(user_Id, today) {
                 color: "#FFFFFF",
                 size: "md",
                 align: "center",
-                margin: "sm"
-              }
+                margin: "sm",
+              },
             ],
             margin: "md",
             spacing: "lg",
             paddingAll: "5px",
             backgroundColor: "#33312b",
             borderColor: "#ffd800",
-            borderWidth: "2px"
+            borderWidth: "2px",
           },
           body: {
             type: "box",
@@ -137,7 +164,7 @@ async function push_covid_today(user_Id, today) {
                     color: "#FFFFFF",
                     size: "md",
                     weight: "bold",
-                    style: "normal"
+                    style: "normal",
                   },
                   {
                     type: "box",
@@ -149,18 +176,18 @@ async function push_covid_today(user_Id, today) {
                         size: "xl",
                         color: "#FFFFFF",
                         margin: "none",
-                        align: "center"
-                      }
+                        align: "center",
+                      },
                     ],
-                    margin: "lg"
-                  }
+                    margin: "lg",
+                  },
                 ],
                 backgroundColor: "#f78820",
                 spacing: "none",
                 margin: "none",
                 borderWidth: "1px",
                 borderColor: "#FFFFFF",
-                paddingAll: "20px"
+                paddingAll: "20px",
               },
               {
                 type: "box",
@@ -169,7 +196,7 @@ async function push_covid_today(user_Id, today) {
                   {
                     type: "text",
                     text: "รักษาหายแล้ว",
-                    color: "#FFFFFF"
+                    color: "#FFFFFF",
                   },
                   {
                     type: "box",
@@ -182,22 +209,22 @@ async function push_covid_today(user_Id, today) {
                         size: "xl",
                         align: "center",
                         gravity: "center",
-                        decoration: "none"
-                      }
+                        decoration: "none",
+                      },
                     ],
-                    margin: "lg"
-                  }
+                    margin: "lg",
+                  },
                 ],
                 backgroundColor: "#32CD32",
                 paddingAll: "20px",
                 margin: "none",
                 borderWidth: "1px",
-                borderColor: "#FFFFFF"
-              }
+                borderColor: "#FFFFFF",
+              },
             ],
             spacing: "none",
             margin: "xs",
-            paddingAll: "0px"
+            paddingAll: "0px",
           },
           footer: {
             type: "box",
@@ -208,7 +235,7 @@ async function push_covid_today(user_Id, today) {
                 text: "เสียชีวิตรวม",
                 color: "#FFFFFF",
                 size: "md",
-                weight: "regular"
+                weight: "regular",
               },
               {
                 type: "box",
@@ -220,36 +247,35 @@ async function push_covid_today(user_Id, today) {
                     color: "#FFFFFF",
                     align: "center",
                     size: "xl",
-                    margin: "md"
-                  }
+                    margin: "md",
+                  },
                 ],
                 margin: "md",
-                paddingBottom: "15px"
-              }
+                paddingBottom: "15px",
+              },
             ],
             backgroundColor: "#FF4500",
             spacing: "md",
             margin: "sm",
             borderWidth: "1px",
-            borderColor: "#FFFFFF"
+            borderColor: "#FFFFFF",
           },
-        }
-      }
-    ]
+        },
+      },
+    ],
   });
 
   await request.post(
     {
-      url: "https://api.line.me/v2/bot/message/push",
+      url: "https://api.line.me/v2/bot/message/broadcast",
       headers: headers,
-      body: body
+      body: body,
     },
     async (err, res, body) => {
       await console.log("status = " + res.statusCode);
     }
   );
 }
-
 
 async function reply_covid_today(reply_token, today) {
   let confirm = today.Confirmed;
@@ -260,7 +286,7 @@ async function reply_covid_today(reply_token, today) {
   let headers = {
     "Content-Type": "application/json",
     Authorization:
-      "Bearer {gnF3K0zD9X1ISUjxWDpWOip8smCuDTC5y8bDI3keJk/ks+eGOKiyJLVHKF53wtPBGoCv6qdFWAAW+z83JyvQu8rtd+ILkPg8oCmLq4cHUauZGbA0I9iSjaplLMwQJxUSb2Dullhv4uagNFK8HelmPQdB04t89/1O/w1cDnyilFU=}"
+      "Bearer {gnF3K0zD9X1ISUjxWDpWOip8smCuDTC5y8bDI3keJk/ks+eGOKiyJLVHKF53wtPBGoCv6qdFWAAW+z83JyvQu8rtd+ILkPg8oCmLq4cHUauZGbA0I9iSjaplLMwQJxUSb2Dullhv4uagNFK8HelmPQdB04t89/1O/w1cDnyilFU=}",
   };
   let body = JSON.stringify({
     replyToken: reply_token,
@@ -285,9 +311,9 @@ async function reply_covid_today(reply_token, today) {
                     text: "ติดเชื้อสะสม",
                     color: "#33312b",
                     size: "md",
-                    weight: "bold"
-                  }
-                ]
+                    weight: "bold",
+                  },
+                ],
               },
               {
                 type: "box",
@@ -300,18 +326,18 @@ async function reply_covid_today(reply_token, today) {
                     size: "xl",
                     align: "center",
                     gravity: "center",
-                    weight: "regular"
-                  }
+                    weight: "regular",
+                  },
                 ],
                 action: {
                   type: "uri",
                   label: "action",
-                  uri: "https://patdpat.github.io/covid"
+                  uri: "https://patdpat.github.io/covid",
                 },
-                margin: "lg"
-              }
+                margin: "lg",
+              },
             ],
-            backgroundColor: "#ffd800"
+            backgroundColor: "#ffd800",
           },
           hero: {
             type: "box",
@@ -323,15 +349,15 @@ async function reply_covid_today(reply_token, today) {
                 color: "#FFFFFF",
                 size: "md",
                 align: "center",
-                margin: "sm"
-              }
+                margin: "sm",
+              },
             ],
             margin: "md",
             spacing: "lg",
             paddingAll: "5px",
             backgroundColor: "#33312b",
             borderColor: "#ffd800",
-            borderWidth: "2px"
+            borderWidth: "2px",
           },
           body: {
             type: "box",
@@ -348,7 +374,7 @@ async function reply_covid_today(reply_token, today) {
                     color: "#FFFFFF",
                     size: "md",
                     weight: "bold",
-                    style: "normal"
+                    style: "normal",
                   },
                   {
                     type: "box",
@@ -360,18 +386,18 @@ async function reply_covid_today(reply_token, today) {
                         size: "xl",
                         color: "#FFFFFF",
                         margin: "none",
-                        align: "center"
-                      }
+                        align: "center",
+                      },
                     ],
-                    margin: "lg"
-                  }
+                    margin: "lg",
+                  },
                 ],
                 backgroundColor: "#f78820",
                 spacing: "none",
                 margin: "none",
                 borderWidth: "1px",
                 borderColor: "#FFFFFF",
-                paddingAll: "20px"
+                paddingAll: "20px",
               },
               {
                 type: "box",
@@ -380,7 +406,7 @@ async function reply_covid_today(reply_token, today) {
                   {
                     type: "text",
                     text: "รักษาหายแล้ว",
-                    color: "#FFFFFF"
+                    color: "#FFFFFF",
                   },
                   {
                     type: "box",
@@ -393,22 +419,22 @@ async function reply_covid_today(reply_token, today) {
                         size: "xl",
                         align: "center",
                         gravity: "center",
-                        decoration: "none"
-                      }
+                        decoration: "none",
+                      },
                     ],
-                    margin: "lg"
-                  }
+                    margin: "lg",
+                  },
                 ],
                 backgroundColor: "#32CD32",
                 paddingAll: "20px",
                 margin: "none",
                 borderWidth: "1px",
-                borderColor: "#FFFFFF"
-              }
+                borderColor: "#FFFFFF",
+              },
             ],
             spacing: "none",
             margin: "xs",
-            paddingAll: "0px"
+            paddingAll: "0px",
           },
           footer: {
             type: "box",
@@ -419,7 +445,7 @@ async function reply_covid_today(reply_token, today) {
                 text: "เสียชีวิตรวม",
                 color: "#FFFFFF",
                 size: "md",
-                weight: "regular"
+                weight: "regular",
               },
               {
                 type: "box",
@@ -431,32 +457,37 @@ async function reply_covid_today(reply_token, today) {
                     color: "#FFFFFF",
                     align: "center",
                     size: "xl",
-                    margin: "md"
-                  }
+                    margin: "md",
+                  },
                 ],
                 margin: "md",
-                paddingBottom: "15px"
-              }
+                paddingBottom: "15px",
+              },
             ],
             backgroundColor: "#FF4500",
             spacing: "md",
             margin: "sm",
             borderWidth: "1px",
-            borderColor: "#FFFFFF"
+            borderColor: "#FFFFFF",
           },
-        }
-      }
-    ]
+        },
+      },
+    ],
   });
 
   await request.post(
     {
       url: "https://api.line.me/v2/bot/message/reply",
       headers: headers,
-      body: body
+      body: body,
     },
     async (err, res, body) => {
       await console.log("status = " + res.statusCode);
     }
   );
+}
+
+async function create_userId(user_Id){
+  const user = new User ({ userId: user_Id });
+  await user.save();
 }
